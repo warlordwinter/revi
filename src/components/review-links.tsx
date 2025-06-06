@@ -23,9 +23,13 @@ export type Employee = {
 
 interface ReviewLinksProps {
   employees: Employee[];
+  googlePlaceId?: string;
 }
 
-export default function ReviewLinks({ employees }: ReviewLinksProps) {
+export default function ReviewLinks({
+  employees,
+  googlePlaceId,
+}: ReviewLinksProps) {
   const { toast } = useToast();
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
 
@@ -42,9 +46,12 @@ export default function ReviewLinks({ employees }: ReviewLinksProps) {
   };
 
   const openLink = (linkId: string) => {
-    const baseUrl = window.location.origin;
-    const fullLink = `${baseUrl}/review/${linkId}`;
-    window.open(fullLink, "_blank");
+    if (googlePlaceId) {
+      window.open(
+        `https://search.google.com/local/writereview?placeid=${googlePlaceId}`,
+        "_blank"
+      );
+    }
   };
 
   return (
@@ -118,7 +125,9 @@ export default function ReviewLinks({ employees }: ReviewLinksProps) {
                         className="flex items-center gap-1"
                       >
                         <ExternalLink className="h-4 w-4" />
-                        <span className="hidden sm:inline">Open</span>
+                        <span className="hidden sm:inline">
+                          {googlePlaceId ? "Open Review" : "Open"}
+                        </span>
                       </Button>
                     </div>
                   </div>

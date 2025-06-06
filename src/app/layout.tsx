@@ -1,8 +1,10 @@
 import { TempoInit } from "@/components/tempo-init";
+import { Toaster } from "@/components/ui/toaster";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { GoogleReviewPrompt } from "@/components/google-review-prompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,6 +27,11 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         <TempoInit />
+        <Toaster />
+        <GoogleReviewPrompt 
+          placeId="YOUR_GOOGLE_PLACE_ID"
+          suggestedReview="Your custom review text here..."
+        />
       </body>
     </html>
   );

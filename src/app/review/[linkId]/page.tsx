@@ -17,9 +17,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     .select(
       `
       *,
-      users(name, email),
       company_info!inner(company_name, website)
-    `,
+    `
     )
     .eq("unique_link_id", linkId)
     .single();
