@@ -1,13 +1,119 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
-import {
-  TONE_ADJECTIVES,
-  QUALITY_ADJECTIVES,
-  STYLE_ADJECTIVES,
-  VALUE_ADJECTIVES,
-  EXPERIENCE_ADJECTIVES,
-  ALL_ADJECTIVES,
-} from "./adjectives.ts";
+
+// Tone adjectives - describes the overall tone of the content
+const TONE_ADJECTIVES = [
+  "professional",
+  "friendly",
+  "formal",
+  "casual",
+  "modern",
+  "traditional",
+  "warm",
+  "welcoming",
+  "serious",
+  "playful",
+  "humorous",
+  "authoritative",
+  "conversational",
+  "technical",
+  "academic",
+  "approachable",
+  "engaging",
+];
+
+// Quality adjectives - describes the quality or standard
+const QUALITY_ADJECTIVES = [
+  "reliable",
+  "trusted",
+  "expert",
+  "innovative",
+  "quality",
+  "excellent",
+  "outstanding",
+  "superior",
+  "premium",
+  "high-quality",
+  "first-class",
+  "top-tier",
+  "exceptional",
+  "unparalleled",
+  "unmatched",
+  "superior",
+  "world-class",
+  "award-winning",
+  "certified",
+  "accredited",
+];
+
+// Style adjectives - describes the style or approach
+const STYLE_ADJECTIVES = [
+  "modern",
+  "traditional",
+  "premium",
+  "luxury",
+  "affordable",
+  "budget",
+  "contemporary",
+  "classic",
+  "elegant",
+  "sophisticated",
+  "minimalist",
+  "cutting-edge",
+  "avant-garde",
+  "trendy",
+  "timeless",
+  "innovative",
+  "revolutionary",
+  "groundbreaking",
+  "pioneering",
+];
+
+// Value adjectives - describes the value proposition
+const VALUE_ADJECTIVES = [
+  "affordable",
+  "cost-effective",
+  "budget-friendly",
+  "premium",
+  "luxury",
+  "exclusive",
+  "high-end",
+  "economical",
+  "reasonable",
+  "competitive",
+  "value-driven",
+  "cost-efficient",
+  "budget-conscious",
+  "premium-priced",
+];
+
+// Experience adjectives - describes the user experience
+const EXPERIENCE_ADJECTIVES = [
+  "seamless",
+  "intuitive",
+  "user-friendly",
+  "convenient",
+  "efficient",
+  "streamlined",
+  "smooth",
+  "effortless",
+  "simple",
+  "straightforward",
+  "accessible",
+  "responsive",
+  "interactive",
+  "engaging",
+  "immersive",
+];
+
+// All adjectives combined
+const ALL_ADJECTIVES = [
+  ...TONE_ADJECTIVES,
+  ...QUALITY_ADJECTIVES,
+  ...STYLE_ADJECTIVES,
+  ...VALUE_ADJECTIVES,
+  ...EXPERIENCE_ADJECTIVES,
+];
 
 interface ScrapeRequest {
   url: string;
@@ -24,10 +130,28 @@ interface ScrapeResponse {
   content_style: string[];
   value_proposition: string[];
   user_experience: string[];
+  synonyms: Record<string, string[]>;
+}
+
+// Function to get synonyms from Datamuse API
+async function getSynonyms(word: string): Promise<string[]> {
+  try {
+    const response = await fetch(
+      `https://api.datamuse.com/words?rel_syn=${word}&max=5`
+    );
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return data.map((item: { word: string }) => item.word);
+  } catch (error) {
+    console.error(`Error fetching synonyms for ${word}:`, error);
+    return [];
+  }
 }
 
 // Function to extract adjectives and descriptive phrases
-function extractDescriptiveContent(text: string): {
+async function extractDescriptiveContent(text: string): Promise<{
   adjectives: string[];
   phrases: string[];
   tone: string[];
@@ -35,7 +159,8 @@ function extractDescriptiveContent(text: string): {
   style: string[];
   value: string[];
   experience: string[];
-} {
+  synonyms: Record<string, string[]>;
+}> {
   const words = text.toLowerCase().split(/\s+/);
   const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
 
@@ -60,6 +185,12 @@ function extractDescriptiveContent(text: string): {
     EXPERIENCE_ADJECTIVES.includes(adj)
   );
 
+  // Get synonyms for found adjectives
+  const synonyms: Record<string, string[]> = {};
+  for (const adj of foundAdjectives) {
+    synonyms[adj] = await getSynonyms(adj);
+  }
+
   return {
     adjectives: foundAdjectives,
     phrases: descriptivePhrases,
@@ -68,6 +199,7 @@ function extractDescriptiveContent(text: string): {
     style,
     value,
     experience,
+    synonyms,
   };
 }
 
@@ -136,8 +268,16 @@ serve(async (req) => {
       .trim();
 
     // Extract descriptive content
-    const { adjectives, phrases, tone, qualities, style, value, experience } =
-      extractDescriptiveContent(mainContent);
+    const {
+      adjectives,
+      phrases,
+      tone,
+      qualities,
+      style,
+      value,
+      experience,
+      synonyms,
+    } = await extractDescriptiveContent(mainContent);
 
     const result: ScrapeResponse = {
       title,
@@ -150,6 +290,7 @@ serve(async (req) => {
       content_style: [...new Set(style)],
       value_proposition: [...new Set(value)],
       user_experience: [...new Set(experience)],
+      synonyms,
     };
 
     return new Response(JSON.stringify(result), {
